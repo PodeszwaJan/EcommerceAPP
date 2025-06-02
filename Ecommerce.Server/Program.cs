@@ -68,15 +68,22 @@ namespace Ecommerce.Server
                 app.UseSwaggerUI();
             }
 
-            // Configure middleware pipeline
-            app.UseDefaultFiles(); // Serve default files like index.html
-            app.UseHttpsRedirection(); // Redirect HTTP to HTTPS
+            // Configure static file serving
+            app.UseDefaultFiles();
+            app.UseStaticFiles();
+
+            // Disable HTTPS redirection in production (since we're behind Render's proxy)
+            if (!app.Environment.IsProduction())
+            {
+                app.UseHttpsRedirection();
+            }
+
             app.UseCors(); // Enable CORS
             app.UseAuthorization(); // Enable authorization
 
             // Configure routing
             app.MapControllers(); // Enable controller endpoints
-            app.MapFallbackToFile("/index.html"); // SPA fallback routing
+            app.MapFallbackToFile("index.html"); // SPA fallback routing
 
             app.Run();
         }
