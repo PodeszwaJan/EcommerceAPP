@@ -34,6 +34,8 @@ FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
 COPY --from=server-build /app/publish .
 COPY --from=client-build /ecommerce.client/dist ./wwwroot
+COPY Ecommerce.Server/appsettings.json .
+COPY Ecommerce.Server/appsettings.Development.json .
 
 # Configure for Render
 ENV PORT=10000
@@ -43,5 +45,8 @@ EXPOSE 10000
 # Disable HTTPS redirection in production
 ENV ASPNETCORE_ENVIRONMENT=Production
 ENV ASPNETCORE_FORWARDEDHEADERS_ENABLED=true
+
+# Set default connection string placeholder
+ENV ConnectionStrings__DatabaseConnection="Server=localhost;Database=EcommerceDb;User Id=sa;Password=YourStrong!Passw0rd;TrustServerCertificate=True"
 
 ENTRYPOINT ["dotnet", "Ecommerce.Server.dll"] 
