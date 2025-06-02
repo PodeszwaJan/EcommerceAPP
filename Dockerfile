@@ -3,6 +3,7 @@ FROM node:18-alpine AS client-build
 WORKDIR /ecommerce.client
 COPY ecommerce.client/package*.json ./
 RUN npm install
+RUN npm install --save-dev @types/node
 COPY ecommerce.client/ .
 
 # Install openssl for certificate generation (if needed)
