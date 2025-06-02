@@ -18,17 +18,12 @@ namespace Ecommerce.Server
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // Database Configuration
-            // Connection string priority:
-            // 1. RENDER_DB_CONNECTION environment variable (production)
-            // 2. appsettings.json (with __DEFAULT_CONNECTION__ replaced by GitHub Actions)
-            // 3. User secrets (local development)
-            var connectionString = Environment.GetEnvironmentVariable("RENDER_DB_CONNECTION")
-                ?? builder.Configuration.GetConnectionString("DatabaseConnection");
+            // Get the connection string from RENDER_DB_CONNECTION environment variable
+            var connectionString = Environment.GetEnvironmentVariable("RENDER_DB_CONNECTION");
 
             if (string.IsNullOrEmpty(connectionString))
             {
-                throw new InvalidOperationException("Connection string 'DatabaseConnection' not found.");
+                throw new InvalidOperationException("RENDER_DB_CONNECTION environment variable is not set. Please configure the database connection string.");
             }
 
             // Configure Entity Framework with SQL Server
