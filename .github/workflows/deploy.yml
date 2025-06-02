@@ -13,20 +13,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v3
-        with:
-          dotnet-version: '8.0.x'
-
-      - name: Replace connection string in appsettings.json
-        env:
-          DefaultConnection: ${{ secrets.DB_CONNECTION_STRING }}
-        run: |
-          sed -i "s|__DEFAULT_CONNECTION__|$DB_CONNECTION|g" Ecommerce.Server/appsettings.json
-          cat Ecommerce.Server/appsettings.json # Optional: verify replacement
-
       - name: Deploy to Render
         env:
           RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
         run: |
-          curl -X GET "$RENDER_DEPLOY_HOOK"
+          curl -X POST "$RENDER_DEPLOY_HOOK"
