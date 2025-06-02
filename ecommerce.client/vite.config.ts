@@ -1,10 +1,7 @@
-/// <reference types="node" />
-/// <reference types="vite/client" />
-
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, URL } from 'node:url';
 
 import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
+import plugin from '@vitejs/plugin-react';
 import fs from 'fs';
 import path from 'path';
 import child_process from 'child_process';
@@ -20,7 +17,7 @@ const certFilePath = path.join(baseFolder, `${certificateName}.pem`);
 const keyFilePath = path.join(baseFolder, `${certificateName}.key`);
 
 // Only create certificates in development mode
-if (process.env.NODE_ENV !== 'production') {
+if (process.env.NODE_ENV === 'development') {
     if (!fs.existsSync(baseFolder)) {
         fs.mkdirSync(baseFolder, { recursive: true });
     }
@@ -45,28 +42,29 @@ const target = env.ASPNETCORE_HTTPS_PORT ? `https://localhost:${env.ASPNETCORE_H
 
 // https://vitejs.dev/config/
 export default defineConfig({
-    plugins: [react()],
-    base: '',
-    build: {
-        outDir: 'dist',
-        assetsDir: 'assets',
-        manifest: true,
-        rollupOptions: {
-            output: {
-                manualChunks: undefined,
-                entryFileNames: 'assets/[name].[hash].js',
-                chunkFileNames: 'assets/[name].[hash].js',
-                assetFileNames: 'assets/[name].[hash].[ext]'
-            }
-        }
-    },
+    plugins: [plugin()],
     resolve: {
         alias: {
             '@': fileURLToPath(new URL('./src', import.meta.url))
         }
     },
+    base: '/',
+    build: {
+        outDir: 'dist',
+        assetsDir: 'assets',
+        emptyOutDir: true,
+    },
     server: {
+        proxy: {
+            '^/api': {
+                target,
+                secure: false
+            }
+        },
         port: 50439,
-        https: undefined
+        https: process.env.NODE_ENV === 'development' && fs.existsSync(keyFilePath) && fs.existsSync(certFilePath) ? {
+            key: fs.readFileSync(keyFilePath),
+            cert: fs.readFileSync(certFilePath),
+        } : undefined
     }
 })

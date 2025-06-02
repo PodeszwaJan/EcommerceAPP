@@ -1,16 +1,11 @@
 # Build frontend
 FROM node:18-alpine AS client-build
-WORKDIR /ecommerce.client
+WORKDIR /client
 COPY ecommerce.client/package*.json ./
 RUN npm install
-RUN npm install --save-dev @types/node
 COPY ecommerce.client/ .
-
-# Install openssl for certificate generation (if needed)
-RUN apk add --no-cache openssl
 # Disable SSL for Vite build in production
 ENV VITE_SERVER_OPTIONS_HTTPS=false
-ENV NODE_ENV=production
 RUN npm run build
 
 # Build backend
@@ -32,23 +27,8 @@ RUN dotnet publish "Ecommerce.Server.csproj" -c Release -o /app/publish --no-res
 # Final image
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
-
-# Copy application files
 COPY --from=server-build /app/publish .
-# Ensure wwwroot exists and copy client files maintaining the assets directory structure
-RUN mkdir -p wwwroot/assets
-COPY --from=client-build /ecommerce.client/dist/assets ./wwwroot/assets
-COPY --from=client-build /ecommerce.client/dist/index.html ./wwwroot/
-COPY --from=client-build /ecommerce.client/dist/vite.svg ./wwwroot/
-COPY Ecommerce.Server/appsettings.json .
-
-# Create startup script
-RUN echo '#!/bin/sh\n\
-if [ -n "$DB_CONNECTION" ]; then\n\
-    sed -i "s|__DEFAULT_CONNECTION__|$DB_CONNECTION|g" /app/appsettings.json\n\
-fi\n\
-exec dotnet Ecommerce.Server.dll\n' > /app/startup.sh && \
-    chmod +x /app/startup.sh
+COPY --from=client-build /client/dist ./wwwroot
 
 # Configure for Render
 ENV PORT=10000
@@ -59,4 +39,4 @@ EXPOSE 10000
 ENV ASPNETCORE_ENVIRONMENT=Production
 ENV ASPNETCORE_FORWARDEDHEADERS_ENABLED=true
 
-ENTRYPOINT ["/app/startup.sh"] 
+ENTRYPOINT ["dotnet", "Ecommerce.Server.dll"] 

@@ -1,70 +1,39 @@
 using Ecommerce.Server.Models;
 using Microsoft.EntityFrameworkCore;
+using System;
 using System.Text.Json.Serialization;
 
 namespace Ecommerce.Server
 {
-    /// <summary>
-    /// Main entry point for the E-commerce application.
-    /// Configures and initializes the ASP.NET Core web application.
-    /// </summary>
     public class Program
     {
-        /// <summary>
-        /// Application entry point. Sets up the web application with required services and middleware.
-        /// </summary>
-        /// <param name="args">Command line arguments</param>
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // Database Configuration
-            var connectionString = Environment.GetEnvironmentVariable("RENDER_DB_CONNECTION");
-            
-            // Log connection string for debugging (mask sensitive info)
-            if (!string.IsNullOrEmpty(connectionString))
+            // Pobieranie connection string w kolejnoœci:
+            // 1. Ze zmiennej œrodowiskowej RENDER_DB_CONNECTION (dla produkcji)
+            // 2. Z appsettings.json (gdzie __DEFAULT_CONNECTION__ zosta³ podmieniony przez GitHub Actions)
+            // 3. Z user secrets (dla rozwoju lokalnego)
+            var connectionString = Environment.GetEnvironmentVariable("RENDER_DB_CONNECTION")
+                ?? builder.Configuration.GetConnectionString("DefaultConnection");
+
+            if (string.IsNullOrEmpty(connectionString))
             {
-                Console.WriteLine("Connection string format validation starting...");
-                try
-                {
-                    // Validate connection string format
-                    var builder = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(connectionString);
-                    Console.WriteLine("Connection string format is valid.");
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Connection string format error: {ex.Message}");
-                    throw;
-                }
-            }
-            else
-            {
-                throw new InvalidOperationException("RENDER_DB_CONNECTION environment variable is not set");
+                throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
             }
 
-            // Configure Entity Framework with SQL Server
             builder.Services.AddDbContext<ECommerceContext>(options =>
-            {
-                options.UseSqlServer(connectionString, sqlServerOptions =>
-                {
-                    sqlServerOptions.EnableRetryOnFailure(
-                        maxRetryCount: 5,
-                        maxRetryDelay: TimeSpan.FromSeconds(30),
-                        errorNumbersToAdd: null
-                    );
-                });
-            });
+                options.UseSqlServer(connectionString));
 
-            // Configure JSON serialization options
+            // Add services to the container.
             builder.Services.AddControllers()
                 .AddJsonOptions(options =>
                 {
-                    // Prevent circular references in JSON serialization
                     options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
                     options.JsonSerializerOptions.WriteIndented = true;
                 });
 
-            // Configure CORS to allow requests from any origin
             builder.Services.AddCors(options =>
             {
                 options.AddDefaultPolicy(builder =>
@@ -75,36 +44,38 @@ namespace Ecommerce.Server
                 });
             });
 
-            // Enable Swagger/OpenAPI documentation
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
 
             var app = builder.Build();
 
-            // Configure the HTTP request pipeline
+            // Configure the HTTP request pipeline.
             if (app.Environment.IsDevelopment())
             {
-                // Enable Swagger UI in development environment
                 app.UseSwagger();
                 app.UseSwaggerUI();
+                app.UseHttpsRedirection(); // Only redirect in development
             }
 
-            // Configure static file serving
+            // Serve static files and enable default files
             app.UseDefaultFiles();
             app.UseStaticFiles();
 
-            // Disable HTTPS redirection in production (since we're behind Render's proxy)
-            if (!app.Environment.IsProduction())
+            app.UseCors();
+            app.UseAuthorization();
+
+            app.MapControllers();
+
+            // Configure SPA fallback
+            app.MapWhen(ctx => !ctx.Request.Path.StartsWithSegments("/api"), builder =>
             {
-                app.UseHttpsRedirection();
-            }
-
-            app.UseCors(); // Enable CORS
-            app.UseAuthorization(); // Enable authorization
-
-            // Configure routing
-            app.MapControllers(); // Enable controller endpoints
-            app.MapFallbackToFile("index.html"); // SPA fallback routing
+                builder.UseStaticFiles();
+                builder.UseRouting();
+                builder.UseEndpoints(endpoints =>
+                {
+                    endpoints.MapFallbackToFile("index.html");
+                });
+            });
 
             app.Run();
         }
