@@ -11,10 +11,7 @@ namespace Ecommerce.Server
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // Pobieranie connection string w kolejnoœci:
-            // 1. Ze zmiennej œrodowiskowej RENDER_DB_CONNECTION (dla produkcji)
-            // 2. Z appsettings.json (gdzie __DEFAULT_CONNECTION__ zosta³ podmieniony przez GitHub Actions)
-            // 3. Z user secrets (dla rozwoju lokalnego)
+           
             var connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING")
     ?? throw new InvalidOperationException("Database connection string not found in DB_CONNECTION_STRING environment variable");
                 

@@ -1,47 +1,87 @@
-# Ecommerce Application
+﻿
+# 🛍 Ecommerce App – Full Stack Deployment with Render & GitHub Actions
 
-## CI/CD Pipeline
+This repository contains a full-stack ecommerce application built with:
 
-This project uses GitHub Actions for Continuous Integration and Continuous Deployment (CI/CD) to automatically build and deploy the application to Render.
+- **Frontend**: Vite + React (Node.js)
+- **Backend**: ASP.NET Core (.NET 8)
+- **CI/CD**: GitHub Actions
+- **Hosting**: Render
 
-### Workflow Overview
+##  Project Structure
 
-The CI/CD pipeline is triggered automatically on every push to the `main` branch and consists of the following stages:
+```
+.
+├── .github/workflows/deploy.yml   # GitHub Actions deployment pipeline
+├── ecommerce.client/              # Frontend project (Vite)
+└── Ecommerce.Server/              # Backend project (.NET 8 Web API)
+├── Dockerfile                     # Multi-stage Dockerfile for building and running the app
+```
 
-1. **Build Stage**
-   - Checkout of the source code
-   - Setup .NET 7.0 environment
-   - Restore project dependencies
-   - Build the application in Release configuration
-   - Run automated tests
+---
 
-2. **Deploy Stage**
-   - Automatic deployment to Render using Render API
+##  Deployment Workflow
 
-### Prerequisites for Deployment
+The deployment is fully automated using GitHub Actions and Render’s deploy hook.
 
-To enable automatic deployments, you need to configure the following secrets in your GitHub repository:
+### Trigger
 
-1. `RENDER_API_KEY`: Your Render API key
-2. `RENDER_SERVICE_ID`: The ID of your Render service
+- Runs on every push to the `master` branch.
 
-To set up these secrets:
-1. Go to your GitHub repository
-2. Navigate to Settings > Secrets and Variables > Actions
-3. Click on "New repository secret"
-4. Add both secrets with their respective values
+### Steps
 
-### Deployment Process
+1. **Checkout the code**
+2. **Trigger deployment** on Render using `RENDER_DEPLOY_HOOK` secret
+3. **Build Frontend** using Node 18 and Vite
+4. **Build Backend** using .NET 8 SDK
+5. **Publish** the backend and combine frontend build output into `/wwwroot`
+6. **Run** the app using ASP.NET Core runtime
 
-1. Push your changes to the `main` branch
-2. GitHub Actions will automatically trigger the workflow
-3. You can monitor the deployment progress in the "Actions" tab of your GitHub repository
-4. Once completed, your application will be available on Render
+---
 
-### Troubleshooting
+## Dockerfile Overview
 
-If the deployment fails, you can:
-1. Check the GitHub Actions logs for error messages
-2. Verify that all required secrets are properly configured
-3. Ensure your Render service is properly set up and running
-4. Check if the application builds successfully locally 
+This setup uses a **multi-stage Docker build**:
+
+### Frontend Stage (`client-build`)
+- Installs dependencies
+- Builds the Vite app
+- Outputs static files to `/client/dist`
+
+### Backend Stage (`server-build`)
+- Removes frontend project reference from `.csproj` for clean Docker build
+- Builds and publishes the .NET backend
+
+### Final Stage (`final`)
+- Copies published backend files and static frontend files into `/wwwroot`
+- Configures runtime for production (port, environment, HTTPS, forwarded headers)
+
+---
+
+## Environment Variables
+
+The following environment variables are set for the final container:
+
+```env
+PORT=10000
+ASPNETCORE_URLS=http://+:10000
+ASPNETCORE_ENVIRONMENT=Production
+ASPNETCORE_FORWARDEDHEADERS_ENABLED=true
+VITE_SERVER_OPTIONS_HTTPS=false
+```
+
+---
+
+## GitHub Secrets Required
+
+To enable deployment, you need to configure the following secret:
+
+`RENDER_DEPLOY_HOOK` | Your Render deploy hook URL (POST)   
+
+
+## 📡 CI/CD with GitHub Actions
+
+The GitHub Actions workflow file is located at `.github/workflows/deploy.yml`.
+
+To customize or extend the CI/CD pipeline, edit this file as needed.
+
