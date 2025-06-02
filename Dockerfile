@@ -33,13 +33,18 @@ RUN dotnet publish "Ecommerce.Server.csproj" -c Release -o /app/publish --no-res
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
 
-# Copy appsettings first to ensure it exists for the sed command
-COPY Ecommerce.Server/appsettings.json .
-RUN if [ -n "$DB_CONNECTION" ]; then sed -i "s|__DEFAULT_CONNECTION__|$DB_CONNECTION|g" appsettings.json; fi
-
-# Copy the rest of the files
+# Copy application files
 COPY --from=server-build /app/publish .
 COPY --from=client-build /ecommerce.client/dist ./wwwroot
+COPY Ecommerce.Server/appsettings.json .
+
+# Create startup script
+RUN echo '#!/bin/sh\n\
+if [ -n "$DB_CONNECTION" ]; then\n\
+    sed -i "s|__DEFAULT_CONNECTION__|$DB_CONNECTION|g" /app/appsettings.json\n\
+fi\n\
+exec dotnet Ecommerce.Server.dll\n' > /app/startup.sh && \
+    chmod +x /app/startup.sh
 
 # Configure for Render
 ENV PORT=10000
@@ -50,4 +55,4 @@ EXPOSE 10000
 ENV ASPNETCORE_ENVIRONMENT=Production
 ENV ASPNETCORE_FORWARDEDHEADERS_ENABLED=true
 
-ENTRYPOINT ["dotnet", "Ecommerce.Server.dll"] 
+ENTRYPOINT ["/app/startup.sh"] 
