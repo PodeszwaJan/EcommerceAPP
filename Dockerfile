@@ -4,6 +4,9 @@ WORKDIR /client
 COPY ecommerce.client/package*.json ./
 RUN npm install
 COPY ecommerce.client/ .
+
+# Install openssl for certificate generation (if needed)
+RUN apk add --no-cache openssl
 # Disable SSL for Vite build in production
 ENV VITE_SERVER_OPTIONS_HTTPS=false
 RUN npm run build
