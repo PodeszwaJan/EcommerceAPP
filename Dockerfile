@@ -35,7 +35,11 @@ WORKDIR /app
 
 # Copy application files
 COPY --from=server-build /app/publish .
-COPY --from=client-build /ecommerce.client/dist ./wwwroot
+# Ensure wwwroot exists and copy client files maintaining the assets directory structure
+RUN mkdir -p wwwroot/assets
+COPY --from=client-build /ecommerce.client/dist/assets ./wwwroot/assets
+COPY --from=client-build /ecommerce.client/dist/index.html ./wwwroot/
+COPY --from=client-build /ecommerce.client/dist/vite.svg ./wwwroot/
 COPY Ecommerce.Server/appsettings.json .
 
 # Create startup script
