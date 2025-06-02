@@ -32,9 +32,14 @@ RUN dotnet publish "Ecommerce.Server.csproj" -c Release -o /app/publish --no-res
 # Final image
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
+
+# Copy appsettings first to ensure it exists for the sed command
+COPY Ecommerce.Server/appsettings.json .
+RUN if [ -n "$DB_CONNECTION" ]; then sed -i "s|__DEFAULT_CONNECTION__|$DB_CONNECTION|g" appsettings.json; fi
+
+# Copy the rest of the files
 COPY --from=server-build /app/publish .
 COPY --from=client-build /ecommerce.client/dist ./wwwroot
-COPY Ecommerce.Server/appsettings*.json ./
 
 # Configure for Render
 ENV PORT=10000
