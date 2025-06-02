@@ -1,6 +1,6 @@
 # Build frontend
 FROM node:18-alpine AS client-build
-WORKDIR /client
+WORKDIR /ecommerce.client
 COPY ecommerce.client/package*.json ./
 RUN npm install
 COPY ecommerce.client/ .
@@ -9,6 +9,7 @@ COPY ecommerce.client/ .
 RUN apk add --no-cache openssl
 # Disable SSL for Vite build in production
 ENV VITE_SERVER_OPTIONS_HTTPS=false
+ENV NODE_ENV=production
 RUN npm run build
 
 # Build backend
@@ -31,7 +32,7 @@ RUN dotnet publish "Ecommerce.Server.csproj" -c Release -o /app/publish --no-res
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
 COPY --from=server-build /app/publish .
-COPY --from=client-build /client/dist ./wwwroot
+COPY --from=client-build /ecommerce.client/dist ./wwwroot
 
 # Configure for Render
 ENV PORT=10000
