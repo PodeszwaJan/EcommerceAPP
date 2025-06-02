@@ -19,20 +19,41 @@ namespace Ecommerce.Server
             var builder = WebApplication.CreateBuilder(args);
 
             // Database Configuration
-            // Connection string priority:
-            // 1. RENDER_DB_CONNECTION environment variable (production)
-            // 2. DatabaseConnection from appsettings.json
-            var connectionString = Environment.GetEnvironmentVariable("RENDER_DB_CONNECTION")
-                ?? builder.Configuration.GetConnectionString("DatabaseConnection");
-
-            if (string.IsNullOrEmpty(connectionString))
+            var connectionString = Environment.GetEnvironmentVariable("RENDER_DB_CONNECTION");
+            
+            // Log connection string for debugging (mask sensitive info)
+            if (!string.IsNullOrEmpty(connectionString))
             {
-                throw new InvalidOperationException("No database connection string found. Please set either RENDER_DB_CONNECTION environment variable or DatabaseConnection in appsettings.json");
+                Console.WriteLine("Connection string format validation starting...");
+                try
+                {
+                    // Validate connection string format
+                    var builder = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(connectionString);
+                    Console.WriteLine("Connection string format is valid.");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Connection string format error: {ex.Message}");
+                    throw;
+                }
+            }
+            else
+            {
+                throw new InvalidOperationException("RENDER_DB_CONNECTION environment variable is not set");
             }
 
             // Configure Entity Framework with SQL Server
             builder.Services.AddDbContext<ECommerceContext>(options =>
-                options.UseSqlServer(connectionString));
+            {
+                options.UseSqlServer(connectionString, sqlServerOptions =>
+                {
+                    sqlServerOptions.EnableRetryOnFailure(
+                        maxRetryCount: 5,
+                        maxRetryDelay: TimeSpan.FromSeconds(30),
+                        errorNumbersToAdd: null
+                    );
+                });
+            });
 
             // Configure JSON serialization options
             builder.Services.AddControllers()
